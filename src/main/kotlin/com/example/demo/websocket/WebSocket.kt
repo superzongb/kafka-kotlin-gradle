@@ -1,9 +1,10 @@
 package com.example.demo.websocket
 
 
+import com.example.demo.kafka.PianoConsumer
 import com.example.demo.kafka.PianoConsumers
 import com.example.demo.kafka.PianoProducer
-import com.example.demo.kafka.PianoConsumer
+import com.example.demo.pojo.Press
 import com.example.demo.util.SpringContextUtil
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -31,6 +32,10 @@ open class WebSocket {
         var logger: Logger = LoggerFactory.getLogger(WebSocket::class.java)
         var sockets: MutableMap<String, WebSocket> = ConcurrentHashMap()
         var producer: PianoProducer? = null
+
+        fun isPianoNote(message: String): Boolean {
+            return Press.pianoNotes.contains(message)
+        }
     }
 
     private var session: Session? = null
@@ -65,14 +70,18 @@ open class WebSocket {
     fun onMessage(message: String, session: Session) {
         if (message == "replay" && !isSubscribed) {
             exec.scheduleAtFixedRate({ replay(session) }, 2, 10, TimeUnit.SECONDS)
+            isSubscribed = true
             return
-        } else if ( message == "redo" && isSubscribed) {
+        } else if (message == "redo" && isSubscribed) {
             toBegin()
             return
         }
 
-        producer!!.sendMessage("Piano", message)
+        if (isPianoNote(message)) {
+            producer!!.sendMessage("Piano", message)
+        }
     }
+
 
     private fun replay(session: Session) {
         var delay = 0
