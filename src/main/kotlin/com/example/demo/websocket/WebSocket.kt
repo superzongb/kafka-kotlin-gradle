@@ -34,7 +34,7 @@ open class WebSocket {
         var producer: PianoProducer? = null
 
         fun isPianoNote(message: String): Boolean {
-            return Press.pianoNotes.contains(message)
+            return Press.PIANO_NOTES.contains(message)
         }
     }
 

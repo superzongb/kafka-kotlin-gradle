@@ -1,9 +1,9 @@
 package com.example.demo.kafka
 
 
-
-import com.alibaba.fastjson.JSON
 import com.example.demo.pojo.Press
+import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.PartitionInfo
 import org.apache.kafka.common.TopicPartition
@@ -11,30 +11,25 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.util.*
+import org.apache.avro.generic.GenericRecord
 
 class PianoConsumer(group: String, topic: String) {
     var props: Properties = Properties()
     var topic: String = topic
-    private var consumer: KafkaConsumer<String, String>? = null
+    private var consumer: KafkaConsumer<String, GenericRecord>? = null
 
     companion object {
         var logger: Logger = LoggerFactory.getLogger(PianoConsumer::class.java)
     }
 
     init {
-        props.put("bootstrap.servers", "127.0.0.1:9092")
-        props.put("group.id", group);
-        props.put("enable.auto.commit", "true")
-        props.put("auto.commit.interval.ms", "10")
-        props.put(
-            "key.deserializer",
-            "org.apache.kafka.common.serialization.StringDeserializer"
-        )
-        props.put(
-            "value.deserializer",
-            "org.apache.kafka.common.serialization.StringDeserializer"
-        )
-
+        props["bootstrap.servers"] = "127.0.0.1:9092"
+        props["group.id"] = group;
+        props["enable.auto.commit"] = "true"
+        props["auto.commit.interval.ms"] = "10"
+        props["key.deserializer"] = "org.apache.kafka.common.serialization.StringDeserializer"
+        props["value.deserializer"] = "io.confluent.kafka.serializers.KafkaAvroDeserializer"
+        props["schema.registry.url"] = "http://127.0.0.1:8081"
 
     }
 
@@ -49,18 +44,21 @@ class PianoConsumer(group: String, topic: String) {
 
     @Synchronized
     fun receiveMessage(): List<String>? {
-        val records = consumer!!.poll(Duration.ofMillis(100))
-        logger.info("receive {} messages from Kafka {}", records.count(), this)
+        val records: ConsumerRecords<String, GenericRecord>? = consumer!!.poll(Duration.ofMillis(100))
         val replays: MutableList<String> = ArrayList()
-        var temp1: Long = 0
-        for (record in records) {
-            val press = JSON.parseObject(record.value(), Press::class.java)
-            val timestamp = press.timeStamp
-            if (temp1 == 0L) {
-                temp1 = timestamp
+        if (records != null) {
+            var startMonment: Long = 0
+            logger.info("receive {} messages from Kafka {}", records.count(), this)
+            for (record: ConsumerRecord<String, GenericRecord> in records) {
+                logger.info("handle {} from Kafka {}", record.value().toString(), this)
+                val press = Press(record.value())
+                val timestamp = press.timeStamp
+                if (startMonment == 0L) {
+                    startMonment = timestamp
+                }
+                val message = record.key()
+                replays.add((timestamp - startMonment).toString() + "," + message)
             }
-            val message = record.key()
-            replays.add((timestamp - temp1).toString() + "," + message)
         }
         return replays
     }
@@ -74,7 +72,6 @@ class PianoConsumer(group: String, topic: String) {
         for (partitioninfo: PartitionInfo in partitionInfos) {
             topicPartitions.add(TopicPartition(topic, partitioninfo.partition()))
         }
-
         consumer!!.seekToBeginning(topicPartitions)
     }
 }

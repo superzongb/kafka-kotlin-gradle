@@ -1,11 +1,17 @@
 package com.example.demo.pojo
 
-open class Press(data: String, timeStamp: Long) {
+import org.apache.avro.Schema
+import org.apache.avro.generic.GenericRecord
+import org.apache.avro.generic.IndexedRecord
+
+open class Press(data: String, timeStamp: Long) : IndexedRecord {
     var timeStamp: Long = timeStamp
     var data: String = data
 
+    constructor (record: GenericRecord): this(record.get("data").toString(), record.get("timeStamp") as Long)
+
     companion object {
-        val pianoNotes = listOf<String>(
+        val PIANO_NOTES = listOf<String>(
             "[data-key=\"65\"]",
             "[data-key=\"83\"]",
             "[data-key=\"68\"]",
@@ -24,5 +30,43 @@ open class Press(data: String, timeStamp: Long) {
             "[data-key=\"79\"]",
             "[data-key=\"80\"]"
         )
+
+        const val SCHEMA_STR: String = "{\n" +
+                "  \"namespace\": \"com.example.demo.pojo\",\n" +
+                "  \"type\": \"record\",\n" +
+                "  \"name\": \"Press\",\n" +
+                "  \"fields\": [\n" +
+                "    {\"name\": \"timeStamp\", \"type\": \"long\"},\n" +
+                "    {\"name\": \"data\", \"type\": \"string\"}\n" +
+                "  ]\n" +
+                "}"
+
+        val SCHEMA: Schema = Schema.Parser().parse(SCHEMA_STR)
     }
+
+    override fun getSchema(): Schema {
+        return SCHEMA
+    }
+
+    override fun put(field_index: Int, value: Any?) {
+        when (field_index) {
+            0 -> timeStamp = value as Long
+            1 -> data = value as String
+            else -> throw org.apache.avro.AvroRuntimeException("Bad index")
+        }
+    }
+
+    override fun get(field_index: Int): Any {
+        return when (field_index) {
+            0 -> timeStamp
+            1 -> data
+            else -> throw org.apache.avro.AvroRuntimeException("Bad index")
+        }
+    }
+
+    override fun toString(): String {
+        return "Press(timeStamp=$timeStamp, data='$data')"
+    }
+
+
 }
