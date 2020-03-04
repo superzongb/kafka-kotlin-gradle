@@ -2,13 +2,21 @@ package com.example.demo.pojo
 
 import org.apache.avro.Schema
 import org.apache.avro.generic.GenericRecord
-import org.apache.avro.generic.IndexedRecord
+import org.apache.avro.specific.SpecificRecord
 
-open class Press(data: String, timeStamp: Long) : IndexedRecord {
-    var timeStamp: Long = timeStamp
-    var data: String = data
+open class Press() : SpecificRecord {
+    var timeStamp: Long = 0L
+    var data: String = ""
 
-    constructor (record: GenericRecord): this(record.get("data").toString(), record.get("timeStamp") as Long)
+    constructor (record: GenericRecord): this(){
+        timeStamp = record.get("timeStamp") as Long
+        data = record.get("data").toString()
+    }
+
+    constructor(data: String, timeStamp:Long):this() {
+        this.data = data
+        this.timeStamp = timeStamp
+    }
 
     companion object {
         val PIANO_NOTES = listOf<String>(
@@ -51,7 +59,7 @@ open class Press(data: String, timeStamp: Long) : IndexedRecord {
     override fun put(field_index: Int, value: Any?) {
         when (field_index) {
             0 -> timeStamp = value as Long
-            1 -> data = value as String
+            1 -> data = value.toString()
             else -> throw org.apache.avro.AvroRuntimeException("Bad index")
         }
     }

@@ -4,6 +4,7 @@ package com.example.demo.websocket
 import com.example.demo.kafka.PianoConsumer
 import com.example.demo.kafka.PianoConsumers
 import com.example.demo.kafka.PianoProducer
+import com.example.demo.kafka.PianoStream
 import com.example.demo.pojo.Press
 import com.example.demo.util.SpringContextUtil
 import org.slf4j.Logger
@@ -48,8 +49,8 @@ open class WebSocket {
         this.session = session
         sockets[session.id] = this
 
-        if (WebSocket.producer == null) {
-            WebSocket.producer = SpringContextUtil.getBean(PianoProducer::class) as PianoProducer
+        if (producer == null) {
+            producer = SpringContextUtil.getBean(PianoProducer::class) as PianoProducer
         }
 
         var kafkaConsumers = SpringContextUtil.getBean(PianoConsumers::class) as PianoConsumers
@@ -75,6 +76,8 @@ open class WebSocket {
         } else if (message == "redo" && isSubscribed) {
             toBegin()
             return
+        } else if (message == "stream") {
+            PianoStream.active()
         }
 
         if (isPianoNote(message)) {
