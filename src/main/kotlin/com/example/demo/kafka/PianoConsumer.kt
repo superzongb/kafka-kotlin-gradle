@@ -2,6 +2,7 @@ package com.example.demo.kafka
 
 
 import com.example.demo.pojo.Press
+import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
@@ -16,7 +17,7 @@ import org.apache.avro.generic.GenericRecord
 class PianoConsumer(group: String, topic: String) {
     var props: Properties = Properties()
     var topic: String = topic
-    private var consumer: KafkaConsumer<String, GenericRecord>? = null
+    private var consumer: KafkaConsumer<String, Press>? = null
 
     companion object {
         var logger: Logger = LoggerFactory.getLogger(PianoConsumer::class.java)
@@ -29,7 +30,8 @@ class PianoConsumer(group: String, topic: String) {
         props["auto.commit.interval.ms"] = "10"
         props["key.deserializer"] = "org.apache.kafka.common.serialization.StringDeserializer"
         props["value.deserializer"] = "io.confluent.kafka.serializers.KafkaAvroDeserializer"
-        props["schema.registry.url"] = "http://127.0.0.1:8081"
+        props[KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG] = "http://localhost:8081"
+        props[KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG] = "true"
 
     }
 
@@ -44,14 +46,14 @@ class PianoConsumer(group: String, topic: String) {
 
     @Synchronized
     fun receiveMessage(): List<String>? {
-        val records: ConsumerRecords<String, GenericRecord>? = consumer!!.poll(Duration.ofMillis(100))
+        val records: ConsumerRecords<String, Press>? = consumer!!.poll(Duration.ofMillis(100))
         val replays: MutableList<String> = ArrayList()
         if (records != null) {
             var startMonment: Long = 0
             logger.info("receive {} messages from Kafka {}", records.count(), this)
-            for (record: ConsumerRecord<String, GenericRecord> in records) {
+            for (record: ConsumerRecord<String, Press> in records) {
                 logger.info("handle {} from Kafka {}", record.value().toString(), this)
-                val press = Press(record.value())
+                val press = record.value()
                 val timestamp = press.timeStamp
                 if (startMonment == 0L) {
                     startMonment = timestamp
