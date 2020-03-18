@@ -9,7 +9,7 @@ import org.springframework.context.annotation.ImportResource
 import org.springframework.web.socket.server.standard.ServerEndpointExporter
 
 @SpringBootApplication
-@ImportResource(locations = arrayOf("classpath:spring/consumers.xml"))
+//@ImportResource(locations = arrayOf("classpath:spring/consumers.xml"))
 open class DemoApplication {
 
     @Bean

@@ -18,7 +18,7 @@ class SpringContextUtil {
         }
 
         //通过名字获取上下文中的bean
-        fun getBean(name: String?): Any? {
+        fun getBean(name: String): Any? {
             return applicationContext!!.getBean(name)
         }
 

@@ -7,19 +7,22 @@ import org.apache.avro.specific.SpecificRecord
 open class Press() : SpecificRecord {
     var timeStamp: Long = 0L
     var data: String = ""
+    var sessionId: String = ""
 
     constructor (record: GenericRecord): this(){
         timeStamp = record.get("timeStamp") as Long
         data = record.get("data").toString()
+        sessionId = record.get("sessonId").toString()
     }
 
-    constructor(data: String, timeStamp:Long):this() {
+    constructor(data: String, timeStamp:Long, sessionId: String):this() {
         this.data = data
         this.timeStamp = timeStamp
+        this.sessionId = sessionId
     }
 
     companion object {
-        val PIANO_NOTES = listOf<String>(
+        val PIANO_NOTES = listOf(
             "[data-key=\"65\"]",
             "[data-key=\"83\"]",
             "[data-key=\"68\"]",
@@ -45,7 +48,8 @@ open class Press() : SpecificRecord {
                 "  \"name\": \"Press\",\n" +
                 "  \"fields\": [\n" +
                 "    {\"name\": \"timeStamp\", \"type\": \"long\"},\n" +
-                "    {\"name\": \"data\", \"type\": \"string\"}\n" +
+                "    {\"name\": \"data\", \"type\": \"string\"},\n" +
+                "    {\"name\": \"sessionid\", \"type\": \"string\"}\n" +
                 "  ]\n" +
                 "}"
 
@@ -60,6 +64,7 @@ open class Press() : SpecificRecord {
         when (field_index) {
             0 -> timeStamp = value as Long
             1 -> data = value.toString()
+            2 -> sessionId = value.toString()
             else -> throw org.apache.avro.AvroRuntimeException("Bad index")
         }
     }
@@ -68,6 +73,7 @@ open class Press() : SpecificRecord {
         return when (field_index) {
             0 -> timeStamp
             1 -> data
+            2 -> sessionId
             else -> throw org.apache.avro.AvroRuntimeException("Bad index")
         }
     }

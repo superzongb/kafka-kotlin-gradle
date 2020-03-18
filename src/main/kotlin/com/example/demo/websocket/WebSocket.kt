@@ -1,21 +1,18 @@
 package com.example.demo.websocket
 
 
-import com.example.demo.kafka.PianoConsumer
-import com.example.demo.kafka.PianoConsumers
+import com.example.demo.kafka.PianoListener
 import com.example.demo.kafka.PianoProducer
 import com.example.demo.kafka.PianoStream
 import com.example.demo.pojo.Press
 import com.example.demo.util.SpringContextUtil
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry
 import org.springframework.stereotype.Component
 import java.io.IOException
 import java.util.*
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.*
 import javax.websocket.OnClose
 import javax.websocket.OnMessage
 import javax.websocket.OnOpen
@@ -26,23 +23,29 @@ import javax.websocket.server.ServerEndpoint
 @Component
 open class WebSocket {
     init {
-        logger.info("WebSocket created. {}", this)
+        logger.info("WebSocket created. {}", this.toString())
     }
 
     companion object {
         var logger: Logger = LoggerFactory.getLogger(WebSocket::class.java)
         var sockets: MutableMap<String, WebSocket> = ConcurrentHashMap()
-        var producer: PianoProducer? = null
+        lateinit var producer: PianoProducer
 
         fun isPianoNote(message: String): Boolean {
             return Press.PIANO_NOTES.contains(message)
         }
     }
 
-    private var session: Session? = null
-    private var consumer: PianoConsumer? = null
+    private lateinit var session: Session
     private var exec: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
     private var isSubscribed: Boolean = false
+    private var pianoMessages: ConcurrentLinkedQueue<String> = ConcurrentLinkedQueue()
+    private lateinit var pianoListener: PianoListener
+    private lateinit var registry: KafkaListenerEndpointRegistry
+    var id: String = ""
+        get() {
+            return session!!.id
+        }
 
     @OnOpen
     fun onOpen(session: Session) {
@@ -53,8 +56,9 @@ open class WebSocket {
             producer = SpringContextUtil.getBean(PianoProducer::class) as PianoProducer
         }
 
-        var kafkaConsumers = SpringContextUtil.getBean(PianoConsumers::class) as PianoConsumers
-        this.consumer = kafkaConsumers.retreveConsumer(session.id.toInt())
+        this.pianoListener = SpringContextUtil.getBean(PianoListener::class) as PianoListener
+
+        this.registry = SpringContextUtil.getBean(KafkaListenerEndpointRegistry::class) as KafkaListenerEndpointRegistry
 
         logger.info("WebSocket connected. {}-{}", this, session.id)
     }
@@ -64,13 +68,15 @@ open class WebSocket {
         if (sockets.containsKey(session.id)) {
             sockets.remove(session.id)
         }
-        logger.info("WebSocket disconnected. {}-{}", this, session.id)
+        this.pianoListener.unregisterSession(this)
+        logger.info("WebSocket disconnected. ${this}-${session.id}")
     }
 
     @OnMessage
     fun onMessage(message: String, session: Session) {
         if (message == "replay" && !isSubscribed) {
-            exec.scheduleAtFixedRate({ replay(session) }, 2, 10, TimeUnit.SECONDS)
+            exec.scheduleAtFixedRate({ replay() }, 2, 10, TimeUnit.SECONDS)
+            this.pianoListener.registerSession(this)
             isSubscribed = true
             return
         } else if (message == "redo" && isSubscribed) {
@@ -78,21 +84,31 @@ open class WebSocket {
             return
         } else if (message == "stream") {
             PianoStream.active()
+        } else if (message == "query") {
+            PianoStream.query()
         }
 
         if (isPianoNote(message)) {
-            producer!!.sendMessage("Piano", message)
+            producer!!.sendMessage(
+                "Piano",
+                message,
+                this.session!!.id
+            )
         }
     }
 
 
-    private fun replay(session: Session) {
-        var delay = 0
-        for (press in consumer!!.receiveMessage()!!) {
-            val timer = Timer() // 实例化Timer类
-            if (delay != 0) {
-                delay = press.split(",").toTypedArray()[0].toInt()
+    fun replay() {
+
+        var timestampOfTheFirstSyllable = 0L
+        while (pianoMessages.isNotEmpty()) {
+            var press = pianoMessages.poll()
+            if (timestampOfTheFirstSyllable == 0L) {
+                timestampOfTheFirstSyllable = press.split(",").toTypedArray()[0].toLong()
             }
+            val timer = Timer() // 实例化Timer类
+            val delay = press.split(",").toTypedArray()[0].toLong() - timestampOfTheFirstSyllable
+
             timer.schedule(object : TimerTask() {
                 override fun run() {
                     try {
@@ -101,13 +117,18 @@ open class WebSocket {
                         logger.error("Send message from kafka failed", e)
                     }
                 }
-            }, delay.toLong()) // 这里百毫秒
-            delay = 1
+            }, delay) // 这里百毫秒
+
         }
     }
 
     private fun toBegin() {
-        consumer!!.seekToBegin()
+        //consumer!!.seekToBegin()
+        registry.getListenerContainer("demo")
+    }
+
+    fun sendMessage(pianoMessage: String) {
+        pianoMessages.add(pianoMessage)
     }
 
 }
