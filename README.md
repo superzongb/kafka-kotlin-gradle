@@ -7,12 +7,13 @@
 启动工程后，访问 localhost:8080，页面打开后会和服务端创建一个websocket连接，通过websocket将敲击钢琴的消息发送到后端，并转发到 kafka 的 Piano topic 中。在网页控制台输入 websocket.send("replay"), 可以启动回放功能，后端通过kafka consumer从topic订阅消息。在网页控制台输入 websocket.send("stream")，则可以在后端创建一个stream。
 
 
-
 ## kafka
 
 参照https://blog.gmem.cc/apache-kafka-study-note 笔记，下载并启动一个zookeeper 和一个 kafka 服务
 
-这个工程中包含一个 producer 和 两个分属不同 group 的 consumer。关于kafka的基本概念，这里不在赘述，参考上面提到的笔记。
+由于测试使用了EmbeddedKafka + MockSchemaRegistryClient，需要不同的配置，因此测试需要指定profile：--spring.profiles.active=test。
+
+Kafka 配置使用了 spring-kafka 来配置。
 
 ## Avro + Confluent Schema Registry
 
