@@ -8,20 +8,23 @@ import org.apache.kafka.common.serialization.StringSerializer
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.context.annotation.Primary
+import org.springframework.context.annotation.Profile
+import org.springframework.kafka.annotation.EnableKafka
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory
 import org.springframework.kafka.core.*
 import org.springframework.kafka.test.EmbeddedKafkaBroker
 import org.springframework.kafka.test.utils.KafkaTestUtils
 
 @Configuration
+@EnableKafka
+@Profile("test")
 open class TestEmbeddedKafkaConfiguration {
     @Autowired
     lateinit var embeddedKafka: EmbeddedKafkaBroker
 
     private val registryClient: MockSchemaRegistryClient = MockSchemaRegistryClient()
 
-    @Bean("testConsumerFactory")
-    @Primary
+    @Bean
     open fun consumerFactory(): ConsumerFactory<String, Any> {
         val valueSerializer = KafkaAvroDeserializer(registryClient)
         valueSerializer.configure(consumerProps(), false)
@@ -46,8 +49,7 @@ open class TestEmbeddedKafkaConfiguration {
     }
 
     //创建生产者工厂
-    @Bean("testProducerFactory")
-    @Primary
+    @Bean
     open fun producerFactory(): ProducerFactory<String, Any> {
         val valueDeserializer = KafkaAvroSerializer(registryClient)
         valueDeserializer.configure(producerProps(), false)
@@ -63,9 +65,17 @@ open class TestEmbeddedKafkaConfiguration {
     }
 
     //kafkaTemplate实现了Kafka发送接收等功能
-    @Bean("testKafkaTemplate")
-    @Primary
+    @Bean
     open fun kafkaTemplate(): KafkaTemplate<String, Any> {
         return KafkaTemplate(producerFactory())
+    }
+
+    @Bean
+    open fun kafkaListenerContainerFactory(): ConcurrentKafkaListenerContainerFactory<String, Any> {
+        val factory =
+            ConcurrentKafkaListenerContainerFactory<String, Any>()
+        factory.consumerFactory = consumerFactory()
+        factory.isBatchListener = true
+        return factory
     }
 }

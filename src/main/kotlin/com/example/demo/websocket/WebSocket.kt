@@ -21,7 +21,7 @@ import javax.websocket.server.ServerEndpoint
 
 @ServerEndpoint("/websocket")
 @Component
-open class WebSocket {
+open class WebSocket : IWebSocket {
     init {
         logger.info("WebSocket created. {}", this.toString())
     }
@@ -42,19 +42,14 @@ open class WebSocket {
     private var pianoMessages: ConcurrentLinkedQueue<String> = ConcurrentLinkedQueue()
     private lateinit var pianoListener: PianoListener
     private lateinit var registry: KafkaListenerEndpointRegistry
-    var id: String = ""
-        get() {
-            return session!!.id
-        }
 
+    @Suppress("unused")
     @OnOpen
     fun onOpen(session: Session) {
         this.session = session
         sockets[session.id] = this
 
-        if (producer == null) {
-            producer = SpringContextUtil.getBean(PianoProducer::class) as PianoProducer
-        }
+        producer = SpringContextUtil.getBean(PianoProducer::class) as PianoProducer
 
         this.pianoListener = SpringContextUtil.getBean(PianoListener::class) as PianoListener
 
@@ -63,6 +58,7 @@ open class WebSocket {
         logger.info("WebSocket connected. {}-{}", this, session.id)
     }
 
+    @Suppress("unused")
     @OnClose
     fun onClose(session: Session) {
         if (sockets.containsKey(session.id)) {
@@ -72,6 +68,7 @@ open class WebSocket {
         logger.info("WebSocket disconnected. ${this}-${session.id}")
     }
 
+    @Suppress("unused")
     @OnMessage
     fun onMessage(message: String, session: Session) {
         if (message == "replay" && !isSubscribed) {
@@ -89,20 +86,19 @@ open class WebSocket {
         }
 
         if (isPianoNote(message)) {
-            producer!!.sendMessage(
+            producer.sendMessage(
                 "Piano",
                 message,
-                this.session!!.id
+                this.session.id
             )
         }
     }
 
 
-    fun replay() {
-
+    private fun replay() {
         var timestampOfTheFirstSyllable = 0L
         while (pianoMessages.isNotEmpty()) {
-            var press = pianoMessages.poll()
+            val press = pianoMessages.poll()
             if (timestampOfTheFirstSyllable == 0L) {
                 timestampOfTheFirstSyllable = press.split(",").toTypedArray()[0].toLong()
             }
@@ -127,8 +123,12 @@ open class WebSocket {
         registry.getListenerContainer("demo")
     }
 
-    fun sendMessage(pianoMessage: String) {
+    override fun sendMessage(pianoMessage: String) {
         pianoMessages.add(pianoMessage)
+    }
+
+    override fun getId(): String {
+        return session.id
     }
 
 }

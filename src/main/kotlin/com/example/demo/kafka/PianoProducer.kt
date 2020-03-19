@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component
 @Component
 open class PianoProducer {
     @Autowired
-    private lateinit var kafkaTemplate: KafkaTemplate<String, Press>
+    private lateinit var kafkaTemplate: KafkaTemplate<String, Any>
 
     companion object {
         var logger: Logger = LoggerFactory.getLogger(PianoProducer::class.java)
