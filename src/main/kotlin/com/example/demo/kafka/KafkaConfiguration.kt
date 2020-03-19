@@ -20,7 +20,7 @@ import java.util.*
 
 @Configuration
 @EnableKafka
-@Profile("prod")
+@Profile("default")
 open class KafkaConfiguration {
 
     //ConcurrentKafkaListenerContainerFactory为创建Kafka监听器的工程类，这里只配置了消费者
