@@ -1,11 +1,26 @@
 package com.example.demo.websocket
 
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.BeforeEach
+import com.example.demo.DemoApplication
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.Mock
+import org.mockito.Mockito.doReturn
+import org.mockito.junit.jupiter.MockitoExtension
+import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.kafka.test.context.EmbeddedKafka
+import org.springframework.test.context.junit.jupiter.SpringExtension
+import javax.websocket.Session
 
 
+@ExtendWith(MockitoExtension::class, SpringExtension::class)
+@SpringBootTest(classes = [DemoApplication::class], webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
+@EmbeddedKafka(topics = ["Piano"], bootstrapServersProperty = "spring.kafka.bootstrap-servers")
 class WebSocketTest{
+
+    @Mock
+    private lateinit var mockSession: Session
+
 
     @Test
     fun test_is_piano_note(){
@@ -26,12 +41,16 @@ class WebSocketTest{
         assertTrue(WebSocket.isPianoNote("[data-key=\"85\"]"))
         assertTrue(WebSocket.isPianoNote("[data-key=\"79\"]"))
         assertTrue(WebSocket.isPianoNote("[data-key=\"80\"]"))
-
     }
 
-    @BeforeEach
-    fun setUp() {
+    @Test
+    fun test_open_and_close() {
+        var webSocket = WebSocket()
+        doReturn("test").`when`(mockSession).id
+        webSocket.onOpen(mockSession)
+        assertEquals(WebSocket.sockets["test"], webSocket)
+
+        webSocket.onClose(mockSession)
+        assertFalse(WebSocket.sockets.containsKey("test"))
     }
-
-
 }

@@ -30,9 +30,6 @@ class PianoListenerTest {
     lateinit var kafkaTemplate: KafkaTemplate<String, Any>
 
     @Autowired
-    lateinit var consumerFactory: DefaultKafkaConsumerFactory<String, Any>
-
-    @Autowired
     lateinit var pianoListener: PianoListener
 
     val latch = CountDownLatch(1)
