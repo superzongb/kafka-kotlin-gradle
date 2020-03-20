@@ -29,7 +29,7 @@ open class WebSocket : IWebSocket {
     companion object {
         var logger: Logger = LoggerFactory.getLogger(WebSocket::class.java)
         var sockets: MutableMap<String, WebSocket> = ConcurrentHashMap()
-        lateinit var producer: PianoProducer
+        val producer: PianoProducer = SpringContextUtil.getBean(PianoProducer::class) as PianoProducer
 
         fun isPianoNote(message: String): Boolean {
             return Press.PIANO_NOTES.contains(message)
@@ -49,10 +49,7 @@ open class WebSocket : IWebSocket {
         this.session = session
         sockets[session.id] = this
 
-        producer = SpringContextUtil.getBean(PianoProducer::class) as PianoProducer
-
         this.pianoListener = SpringContextUtil.getBean(PianoListener::class) as PianoListener
-
         this.registry = SpringContextUtil.getBean(KafkaListenerEndpointRegistry::class) as KafkaListenerEndpointRegistry
 
         logger.info("WebSocket connected. {}-{}", this, session.id)
